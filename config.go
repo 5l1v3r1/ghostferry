@@ -5,9 +5,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	sql "github.com/Shopify/ghostferry/sqlwrapper"
 	"io/ioutil"
 	"time"
+
+	sql "github.com/Shopify/ghostferry/sqlwrapper"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
@@ -18,6 +19,8 @@ const (
 	VerifierTypeIterative      = "Iterative"
 	VerifierTypeInline         = "Inline"
 	VerifierTypeNoVerification = "NoVerification"
+
+	DefaultMarginalia = "application:ghostferry"
 )
 
 type TLSConfig struct {
@@ -49,17 +52,32 @@ func (this *TLSConfig) BuildConfig() (*tls.Config, error) {
 }
 
 type DatabaseConfig struct {
-	Host       string
-	Port       uint16
-	User       string
-	Pass       string
-	Collation  string
-	Params     map[string]string
-	// SQL query comments to differentiate Ghostferry's binlog events
-	// Optional: defaults to empty string (no comments)
-	Marginalia string
+	Host      string
+	Port      uint16
+	User      string
+	Pass      string
+	Collation string
+	Params    map[string]string
 
 	TLS *TLSConfig
+
+	// SQL annotations in the form of foo:bar (/*foo:bar*/) that are
+	// used to differentiate Ghostferry's DMLs against other actors
+	//
+	// This is used to ensure any changes to the Target during the move process
+	// are performed only by Ghostferry (until cutover). Otherwise, the modification
+	// will be identified as data corruption and fail the move.
+	//
+	// *IMPORTANT*
+	//
+	// The Target can only be successfully verified if the Target database is
+	// configured using either statement-based binary logging or has
+	// binlog_rows_query_log_events set to ON. Otherwise, the annotations are
+	// not available in any DML events and it will not be possible to verify
+	// Ghostferry's actions versus a different actor's.
+	//
+	// This will default to the DefaultMarginalia constant above if not set
+	Marginalia string
 }
 
 func (c *DatabaseConfig) MySQLConfig() (*mysql.Config, error) {
@@ -114,6 +132,10 @@ func (c *DatabaseConfig) Validate() error {
 	err = c.assertParamSet("sql_mode", "'STRICT_ALL_TABLES,NO_BACKSLASH_ESCAPES'")
 	if err != nil {
 		return err
+	}
+
+	if c.Marginalia == "" {
+		c.Marginalia = DefaultMarginalia
 	}
 
 	return nil

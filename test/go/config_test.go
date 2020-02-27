@@ -111,6 +111,19 @@ func (this *ConfigTestSuite) TestDefaultValues() {
 	this.Require().Equal(".", this.config.WebBasedir)
 }
 
+func (this *ConfigTestSuite) TestDefaultMarginalia() {
+	this.config.Target.Marginalia = ""
+	err := this.config.ValidateConfig()
+	this.Require().Nil(err)
+	this.Require().Equal(ghostferry.DefaultMarginalia, this.config.Target.Marginalia)
+}
+
+func (this *ConfigTestSuite) TestValidMarginalia() {
+	this.config.Target.Marginalia = "marginalia"
+	err := this.config.ValidateConfig()
+	this.Require().Nil(err)
+}
+
 func (this *ConfigTestSuite) TestCorruptCert() {
 	this.tls.CertPath = testhelpers.FixturePath("dummy-corrupt-cert.pem")
 	_, err := this.tls.BuildConfig()

@@ -155,6 +155,9 @@ func (this *IntegrationTestCase) Teardown() {
 	if r != nil {
 		panic(r)
 	}
+
+	this.SourceDB.Close()
+	this.TargetDB.Close()
 }
 
 func (this *IntegrationTestCase) verifyTableChecksum() (ghostferry.VerificationResult, error) {

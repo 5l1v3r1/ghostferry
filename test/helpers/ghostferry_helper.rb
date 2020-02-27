@@ -235,6 +235,10 @@ module GhostferryHelper
           environment["GHOSTFERRY_CASCADING_PAGINATION_COLUMN_CONFIG"] = @config[:cascading_pagination_column_config]
         end
 
+        if @config[:marginalia]
+          environment["GHOSTFERRY_MARGINALIA"] = @config[:marginalia]
+        end
+
         @logger.info("starting ghostferry test binary #{@compiled_binary_path}")
         Open3.popen3(environment, @compiled_binary_path) do |stdin, stdout, stderr, wait_thr|
           stdin.puts(resuming_state) unless resuming_state.nil?

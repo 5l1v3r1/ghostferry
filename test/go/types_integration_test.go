@@ -83,24 +83,6 @@ func setupFixedPointDecimalTypeTable(f *testhelpers.TestFerry, sourceDB, targetD
 	testhelpers.PanicIfError(err)
 }
 
-func TestCopyDataWithManyTypes(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
-	testcase := &testhelpers.IntegrationTestCase{
-		T:           t,
-		SetupAction: setupMultiTypeTable,
-		DataWriter: &testhelpers.MixedActionDataWriter{ // TODO: there's no guarantee that this data writer will update the data of the existing rows.
-			ProbabilityOfInsert: 1.0 / 3.0,
-			ProbabilityOfUpdate: 1.0 / 3.0,
-			ProbabilityOfDelete: 1.0 / 3.0,
-			NumberOfWriters:     3,
-			Tables:              []string{"gftest.table1"},
-		},
-		Ferry: testhelpers.NewTestFerry(),
-	}
-
-	testcase.Run()
-}
-
 func TestCopyDataWithFixedPointDecimalTypes(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 	testcase := &testhelpers.IntegrationTestCase{

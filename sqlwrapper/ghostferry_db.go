@@ -3,11 +3,13 @@ package sqlwrapper
 import (
 	"context"
 	sqlorig "database/sql"
+	"fmt"
+	"strings"
 )
 
 type DB struct {
 	*sqlorig.DB
-	marginalia string
+	Marginalia string
 }
 
 type Tx struct {
@@ -21,11 +23,11 @@ func Open(driverName, dataSourceName, marginalia string) (*DB, error) {
 }
 
 func (db DB) PrepareContext(ctx context.Context, query string) (*sqlorig.Stmt, error) {
-	return db.DB.PrepareContext(ctx, Annotate(query, db.marginalia))
+	return db.DB.PrepareContext(ctx, Annotate(query, db.Marginalia))
 }
 
 func (db DB) ExecContext(ctx context.Context, query string, args ...interface{}) (sqlorig.Result, error) {
-	return db.DB.ExecContext(ctx, Annotate(query, db.marginalia), args...)
+	return db.DB.ExecContext(ctx, Annotate(query, db.Marginalia), args...)
 }
 
 func (db DB) QueryContext(ctx context.Context, query string, args ...interface{}) (*sqlorig.Rows, error) {
@@ -33,11 +35,11 @@ func (db DB) QueryContext(ctx context.Context, query string, args ...interface{}
 }
 
 func (db DB) Exec(query string, args ...interface{}) (sqlorig.Result, error) {
-	return db.DB.Exec(Annotate(query, db.marginalia), args...)
+	return db.DB.Exec(Annotate(query, db.Marginalia), args...)
 }
 
 func (db DB) Prepare(query string) (*sqlorig.Stmt, error) {
-	return db.DB.Prepare(Annotate(query, db.marginalia))
+	return db.DB.Prepare(Annotate(query, db.Marginalia))
 }
 
 func (db DB) Query(query string, args ...interface{}) (*sqlorig.Rows, error) {
@@ -54,7 +56,7 @@ func (db DB) QueryRowContext(ctx context.Context, query string, args ...interfac
 
 func (db DB) Begin() (*Tx, error) {
 	tx, err := db.DB.Begin()
-	return &Tx{tx, db.marginalia}, err
+	return &Tx{tx, db.Marginalia}, err
 }
 
 func (tx Tx) ExecContext(ctx context.Context, query string, args ...interface{}) (sqlorig.Result, error) {
@@ -90,5 +92,13 @@ func (tx Tx) QueryRow(query string, args ...interface{}) *sqlorig.Row {
 }
 
 func Annotate(query, marginalia string) string {
-	return marginalia + query
+	if strings.Contains(query, ";") {
+		annotatedTx := []byte{}
+		for _, stmt := range strings.Split(query, ";") {
+			annotatedTx = append(annotatedTx, fmt.Sprintf("/*%s*/ %s;", marginalia, stmt)...)
+		}
+		return string(annotatedTx)
+	}
+
+	return fmt.Sprintf("/*%s*/ %s", marginalia, query)
 }

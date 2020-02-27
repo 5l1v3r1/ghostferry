@@ -37,7 +37,7 @@ func NewTestConfig() *ghostferry.Config {
 			Params: map[string]string{
 				"charset": "utf8mb4",
 			},
-			Marginalia: "/*maintenance:ghostferry*/ ",
+			Marginalia: "application:ghostferry",
 		},
 
 		Target: &ghostferry.DatabaseConfig{
@@ -49,6 +49,7 @@ func NewTestConfig() *ghostferry.Config {
 			Params: map[string]string{
 				"charset": "utf8mb4",
 			},
+			Marginalia: "application:ghostferry",
 		},
 
 		MyServerId:       91919,
@@ -84,7 +85,7 @@ func (this *TestFerry) Start() error {
 	}
 
 	if this.BeforeBinlogApplyListener != nil {
-		this.Ferry.BinlogStreamer.AddEventListener(this.BeforeBinlogApplyListener)
+		this.Ferry.SourceBinlogStreamer.AddEventListener(this.BeforeBinlogApplyListener)
 	}
 
 	if this.BeforeRowCopyDoneListener != nil {
@@ -101,7 +102,7 @@ func (this *TestFerry) Start() error {
 	}
 
 	if this.AfterBinlogApplyListener != nil {
-		this.Ferry.BinlogStreamer.AddEventListener(this.AfterBinlogApplyListener)
+		this.Ferry.SourceBinlogStreamer.AddEventListener(this.AfterBinlogApplyListener)
 	}
 
 	if this.AfterRowCopyDoneListener != nil {

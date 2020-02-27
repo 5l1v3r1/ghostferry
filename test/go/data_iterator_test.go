@@ -24,7 +24,7 @@ func (this *DataIteratorTestSuite) SetupTest() {
 	this.GhostferryUnitTestSuite.SetupTest()
 	this.SeedSourceDB(5)
 
-	sourceDb := this.Ferry.SourceDB
+	sourceDB := this.Ferry.SourceDB
 	config := this.Ferry.Config
 	errorHandler := this.Ferry.ErrorHandler
 	throttler := this.Ferry.Throttler
@@ -34,7 +34,7 @@ func (this *DataIteratorTestSuite) SetupTest() {
 		TablesFunc: nil,
 	}
 
-	tables, err := ghostferry.LoadTables(sourceDb, tableFilter, nil, nil, nil)
+	tables, err := ghostferry.LoadTables(sourceDB, tableFilter, nil, nil, nil)
 	this.Require().Nil(err)
 
 	this.tables = tables.AsSlice()
@@ -42,12 +42,12 @@ func (this *DataIteratorTestSuite) SetupTest() {
 	config.DataIterationBatchSize = 2
 
 	this.di = &ghostferry.DataIterator{
-		DB:          sourceDb,
+		DB:          sourceDB,
 		Concurrency: config.DataIterationConcurrency,
 
 		ErrorHandler: errorHandler,
 		CursorConfig: &ghostferry.CursorConfig{
-			DB:        sourceDb,
+			DB:        sourceDB,
 			Throttler: throttler,
 
 			BuildSelect: nil,

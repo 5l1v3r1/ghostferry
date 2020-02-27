@@ -17,8 +17,10 @@ import (
 
 const (
 	// These should be kept in sync with ghostferry.rb
-	portEnvName string        = "GHOSTFERRY_INTEGRATION_PORT"
-	timeout     time.Duration = 30 * time.Second
+	portEnvName       string        = "GHOSTFERRY_INTEGRATION_PORT"
+	timeout           time.Duration = 30 * time.Second
+	marginaliaName                  = "GHOSTFERRY_MARGINALIA"
+	defaultMarginalia               = "application:ghostferry"
 )
 
 const (
@@ -80,7 +82,7 @@ func (f *IntegrationFerry) Start() error {
 		return f.SendStatusAndWaitUntilContinue(StatusBeforeRowCopy, rowBatch.TableSchema().Name)
 	})
 
-	f.Ferry.BinlogStreamer.AddEventListener(func(events []ghostferry.DMLEvent) error {
+	f.Ferry.SourceBinlogStreamer.AddEventListener(func(events []ghostferry.DMLEvent) error {
 		return f.SendStatusAndWaitUntilContinue(StatusBeforeBinlogApply)
 	})
 
@@ -93,7 +95,7 @@ func (f *IntegrationFerry) Start() error {
 		return f.SendStatusAndWaitUntilContinue(StatusAfterRowCopy, rowBatch.TableSchema().Name)
 	})
 
-	f.Ferry.BinlogStreamer.AddEventListener(func(events []ghostferry.DMLEvent) error {
+	f.Ferry.SourceBinlogStreamer.AddEventListener(func(events []ghostferry.DMLEvent) error {
 		return f.SendStatusAndWaitUntilContinue(StatusAfterBinlogApply)
 	})
 
@@ -169,6 +171,11 @@ func (f *IntegrationFerry) Main() error {
 }
 
 func NewStandardConfig() (*ghostferry.Config, error) {
+	marginalia := os.Getenv(marginaliaName)
+	if marginalia == "" {
+		marginalia = defaultMarginalia
+	}
+
 	config := &ghostferry.Config{
 		Source: &ghostferry.DatabaseConfig{
 			Host:      "127.0.0.1",
@@ -179,6 +186,7 @@ func NewStandardConfig() (*ghostferry.Config, error) {
 			Params: map[string]string{
 				"charset": "utf8mb4",
 			},
+			Marginalia: marginalia,
 		},
 
 		Target: &ghostferry.DatabaseConfig{
@@ -190,6 +198,7 @@ func NewStandardConfig() (*ghostferry.Config, error) {
 			Params: map[string]string{
 				"charset": "utf8mb4",
 			},
+			Marginalia: marginalia,
 		},
 
 		AutomaticCutover: true,
@@ -247,7 +256,11 @@ func NewStandardConfig() (*ghostferry.Config, error) {
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
+
 	logrus.SetLevel(logrus.DebugLevel)
+	if os.Getenv("CI") == "true" {
+		logrus.SetLevel(logrus.ErrorLevel)
+	}
 
 	config, err := NewStandardConfig()
 	if err != nil {

@@ -5,8 +5,9 @@ import (
 	"crypto/tls"
 	sqlorig "database/sql"
 	"fmt"
-	sql "github.com/Shopify/ghostferry/sqlwrapper"
 	"time"
+
+	sql "github.com/Shopify/ghostferry/sqlwrapper"
 
 	"github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/replication"
@@ -97,11 +98,21 @@ func (s *BinlogStreamer) ConnectBinlogStreamerToMysqlFrom(startFromBinlogPositio
 		return mysql.Position{}, err
 	}
 
+	if startFromBinlogPosition.Pos == 0 && startFromBinlogPosition.Name == "" {
+		startFromBinlogPosition, err = ShowMasterStatusBinlogPosition(s.DB)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to read current binlog position")
+			return mysql.Position{}, err
+		}
+	}
+
 	s.lastStreamedBinlogPosition = startFromBinlogPosition
 
 	s.logger.WithFields(logrus.Fields{
 		"file": s.lastStreamedBinlogPosition.Name,
 		"pos":  s.lastStreamedBinlogPosition.Pos,
+		"host": s.DBConfig.Host,
+		"port": s.DBConfig.Port,
 	}).Info("starting binlog streaming")
 
 	s.binlogStreamer, err = s.binlogSyncer.StartSync(s.lastStreamedBinlogPosition)
@@ -123,6 +134,7 @@ func (s *BinlogStreamer) Run() {
 
 	s.logger.Info("starting binlog streamer")
 
+	var queryEvent *replication.RowsQueryEvent
 	for !s.stopRequested || (s.stopRequested && s.lastStreamedBinlogPosition.Compare(s.targetBinlogPosition) < 0) {
 		var ev *replication.BinlogEvent
 		var timedOut bool
@@ -159,8 +171,21 @@ func (s *BinlogStreamer) Run() {
 				"pos":  s.lastStreamedBinlogPosition.Pos,
 				"file": s.lastStreamedBinlogPosition.Name,
 			}).Info("rotated binlog file")
+		case *replication.RowsQueryEvent:
+			// A RowsQueryEvent will always precede the corresponding RowsEvent
+			// if binlog_rows_query_log_events is enabled, and is used to get
+			// the full query that was executed on the master (with annotations)
+			// that is otherwise not possible to reconstruct
+			queryEvent = ev.Event.(*replication.RowsQueryEvent)
+			s.updateLastStreamedPosAndTime(ev)
+		case *replication.XIDEvent:
+			// Reset the queryEvent after the transaction has completed for
+			// safety as it has now been sent to handleRowsEvent with the
+			// corresponding RowsEvent(s)
+			queryEvent = nil
+			s.updateLastStreamedPosAndTime(ev)
 		case *replication.RowsEvent:
-			err = s.handleRowsEvent(ev)
+			err = s.handleRowsEvent(ev, queryEvent)
 			if err != nil {
 				s.logger.WithError(err).Error("failed to handle rows event")
 				s.ErrorHandler.Fatal("binlog_streamer", err)
@@ -240,7 +265,7 @@ func (s *BinlogStreamer) updateLastStreamedPosAndTime(ev *replication.BinlogEven
 	}
 }
 
-func (s *BinlogStreamer) handleRowsEvent(ev *replication.BinlogEvent) error {
+func (s *BinlogStreamer) handleRowsEvent(ev *replication.BinlogEvent, queryEvent *replication.RowsQueryEvent) error {
 	eventTime := time.Unix(int64(ev.Header.Timestamp), 0)
 	rowsEvent := ev.Event.(*replication.RowsEvent)
 
@@ -261,7 +286,12 @@ func (s *BinlogStreamer) handleRowsEvent(ev *replication.BinlogEvent) error {
 		return nil
 	}
 
-	dmlEvs, err := NewBinlogDMLEvents(table, ev, pos)
+	query := ""
+	if queryEvent != nil {
+		query = string(queryEvent.Query)
+	}
+
+	dmlEvs, err := NewBinlogDMLEvents(table, ev, pos, query)
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package ghostferry
 
 import (
 	"fmt"
+
 	sql "github.com/Shopify/ghostferry/sqlwrapper"
 
 	"github.com/sirupsen/logrus"
@@ -100,7 +101,6 @@ func (b *BinlogWriter) writeEvents(events []DMLEvent) error {
 	}
 
 	queryBuffer = append(queryBuffer, "COMMIT"...)
-
 	startEv := events[0]
 	endEv := events[len(events)-1]
 	query := string(queryBuffer)
