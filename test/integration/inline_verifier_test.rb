@@ -18,6 +18,26 @@ class InlineVerifierTest < GhostferryTestCase
   # General Integration Tests #
   #############################
 
+  def test_target_corruption_is_ignored_if_skip_target_verification
+    [source_db, target_db].each do |db|
+      db.query("CREATE DATABASE IF NOT EXISTS #{DEFAULT_DB}")
+      db.query("CREATE TABLE IF NOT EXISTS #{DEFAULT_FULL_TABLE_NAME} (id bigint(20) not null auto_increment, data VARCHAR(255), data2 VARCHAR(255), primary key(id))")
+    end
+
+    source_db.prepare("INSERT INTO #{DEFAULT_FULL_TABLE_NAME} (id, data, data2) VALUES (?, ?, ?)").execute(1, "data1", "same")
+    target_db.prepare("INSERT INTO #{DEFAULT_FULL_TABLE_NAME} (id, data, data2) VALUES (?, ?, ?)").execute(1, "data2", "same")
+
+    ghostferry = new_ghostferry(MINIMAL_GHOSTFERRY, config: { verifier_type: "Inline", ignored_column: "data", skip_target_verification: "true" })
+
+    corrupting_id = 1
+    ghostferry.on_status(Ghostferry::Status::ROW_COPY_COMPLETED) do
+      target_db.query("UPDATE #{DEFAULT_FULL_TABLE_NAME} SET data = 'data5' WHERE id = #{corrupting_id}", exclude_marginalia: true)
+    end
+
+    ghostferry.run
+    assert_nil ghostferry.error
+  end
+
   def test_target_corruption_is_detected
     [source_db, target_db].each do |db|
       db.query("CREATE DATABASE IF NOT EXISTS #{DEFAULT_DB}")

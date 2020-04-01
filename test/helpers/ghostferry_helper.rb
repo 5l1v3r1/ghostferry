@@ -192,7 +192,7 @@ module GhostferryHelper
 
           data = JSON.parse(JSON.parse(req.body)["Payload"])
           @callback_handlers["progress"].each { |f| f.call(data) } unless @callback_handlers["progress"].nil?
-        rescue StandardError => e
+        rescue StandardError
         end
       end
 
@@ -237,6 +237,10 @@ module GhostferryHelper
 
         if @config[:marginalia]
           environment["GHOSTFERRY_MARGINALIA"] = @config[:marginalia]
+        end
+
+        if @config[:skip_target_verification]
+          environment["GHOSTFERRY_SKIP_TARGET_VERIFICATION"] = @config[:skip_target_verification]
         end
 
         @logger.info("starting ghostferry test binary #{@compiled_binary_path}")

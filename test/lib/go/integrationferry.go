@@ -17,10 +17,11 @@ import (
 
 const (
 	// These should be kept in sync with ghostferry.rb
-	portEnvName       string        = "GHOSTFERRY_INTEGRATION_PORT"
-	timeout           time.Duration = 30 * time.Second
-	marginaliaName                  = "GHOSTFERRY_MARGINALIA"
-	defaultMarginalia               = "application:ghostferry"
+	portEnvName                string        = "GHOSTFERRY_INTEGRATION_PORT"
+	timeout                    time.Duration = 30 * time.Second
+	marginaliaName                           = "GHOSTFERRY_MARGINALIA"
+	defaultMarginalia                        = "application:ghostferry"
+	skipTargetVerificationName               = "SKIP_TARGET_VERIFICATION"
 )
 
 const (
@@ -207,7 +208,8 @@ func NewStandardConfig() (*ghostferry.Config, error) {
 			TablesFunc: nil,
 		},
 
-		DumpStateOnSignal: true,
+		DumpStateOnSignal:      true,
+		SkipTargetVerification: (os.Getenv(skipTargetVerificationName) == "true"),
 	}
 
 	integrationPort := os.Getenv(portEnvName)
