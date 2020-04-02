@@ -104,9 +104,9 @@ module GhostferryHelper
       start_ghostferry(resuming_state)
       start_server_watchdog
 
-      @subprocess_thread.join
-      @server_watchdog_thread.join
-      @server_thread.join
+      @subprocess_thread.join if @subprocess_thread.alive?
+      @server_watchdog_thread.join if @server_watchdog_thread.alive?
+      @server_thread.join if @server_thread.alive?
     ensure
       kill
       raise @server_last_error unless @server_last_error.nil?

@@ -21,7 +21,7 @@ const (
 	timeout                    time.Duration = 30 * time.Second
 	marginaliaName                           = "GHOSTFERRY_MARGINALIA"
 	defaultMarginalia                        = "application:ghostferry"
-	skipTargetVerificationName               = "SKIP_TARGET_VERIFICATION"
+	skipTargetVerificationName               = "GHOSTFERRY_SKIP_TARGET_VERIFICATION"
 )
 
 const (
