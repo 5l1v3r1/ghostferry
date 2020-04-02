@@ -571,8 +571,8 @@ func (v *InlineVerifier) sourceBinlogEventListener(evs []DMLEvent) error {
 		v.reverifyStore.Add(ev.TableSchema(), paginationKey)
 	}
 
-	if v.StateTracker != nil {
-		ev := evs[len(evs)-1]
+	ev := evs[len(evs)-1]
+	if v.StateTracker != nil && ev.IsResumable() {
 		v.StateTracker.UpdateLastStoredSourceBinlogPositionForInlineVerifier(ev.BinlogPosition())
 	}
 
@@ -611,8 +611,8 @@ func (v *InlineVerifier) targetBinlogEventListener(evs []DMLEvent) error {
 		}
 	}
 
-	if v.StateTracker != nil {
-		ev := evs[len(evs)-1]
+	ev := evs[len(evs)-1]
+	if v.StateTracker != nil && ev.IsResumable() {
 		v.StateTracker.UpdateLastStoredTargetBinlogPositionForInlineVerifier(ev.BinlogPosition())
 	}
 

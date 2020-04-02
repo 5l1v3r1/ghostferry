@@ -143,7 +143,6 @@ func (s *BinlogStreamer) Run() {
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
 			ev, er = s.binlogStreamer.GetEvent(ctx)
-
 			if er == context.DeadlineExceeded {
 				timedOut = true
 				return nil
@@ -177,7 +176,6 @@ func (s *BinlogStreamer) Run() {
 			// the full query that was executed on the master (with annotations)
 			// that is otherwise not possible to reconstruct
 			queryEvent = ev.Event.(*replication.RowsQueryEvent)
-			s.updateLastStreamedPosAndTime(ev)
 		case *replication.XIDEvent:
 			// Reset the queryEvent after the transaction has completed for
 			// safety as it has now been sent to handleRowsEvent with the
@@ -190,8 +188,6 @@ func (s *BinlogStreamer) Run() {
 				s.logger.WithError(err).Error("failed to handle rows event")
 				s.ErrorHandler.Fatal("binlog_streamer", err)
 			}
-
-			s.updateLastStreamedPosAndTime(ev)
 		case *replication.FormatDescriptionEvent:
 			// This event has a LogPos = 0, presumably because this is the first
 			// event received by the BinlogStreamer to get some metadata about
@@ -208,8 +204,6 @@ func (s *BinlogStreamer) Run() {
 			// with empty GenericEvent structs.
 			// so there's no way to handle this for us.
 			continue
-		default:
-			s.updateLastStreamedPosAndTime(ev)
 		}
 	}
 }
