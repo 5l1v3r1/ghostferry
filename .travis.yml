@@ -22,6 +22,9 @@ install:
   # Installing and Starting MySQL
   - .travisci/start-mysql.sh
 
+before_script:
+  - ulimit -n 16384
+
 script:
   - make test
 
